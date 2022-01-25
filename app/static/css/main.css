@@ -1,4 +1,54 @@
-.header {
+html {
+    background-color: burlywood;
+}
+
+main {
+    width: 100%;
+    height: 100%;
+}
+
+.map {
+    position: absolute;
+    width: 80%;
+    height: 80%;
     text-align: center;
-    background-color: red;
+    background-color: blue;
+    top: 30px;
+    left: 2%;
+}
+
+.location_search {
+    position: absolute;
+    width: 20%;
+    height: 3%;
+    left: 78%;
+    top: 3%;
+    resize: none;
+}
+
+.report {
+    position: absolute;
+    width: 10%;
+    height: 5%;
+    left: 88.5%;
+    top: 10%;
+    text-size-adjust: auto;  
+}
+
+.statistics {
+    position: absolute;
+    width: 10%;
+    height: 5%;
+    left: 2.5%;
+    top: 88.5%;
+    text-size-adjust: auto;  
+}
+
+.themes {
+    position: absolute;
+    width: 10%;
+    height: 5%;
+    left: 88.5%;
+    top: 88.5%;
+    text-size-adjust: auto;  
 }

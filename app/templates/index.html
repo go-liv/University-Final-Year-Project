@@ -12,23 +12,41 @@
         <!-- Reference for JS scripts -->
         <script src="../static/js/api_rel.js"></script>
 
-        <header class='header'>
-            {{ title }}
-        </header>
-
-        <!-- Map -->
-        <!-- getData() from /static/js/api_rel.js not working -->
-        <button id="click">
-            Click me
-            <script>
-                let lat= 52.406645267612724;
-                let lng= -1.501645719390064;     
+        <main>
+            <section id='map' class='map'>
+                Map
+                <textarea name='location_search' cols='1' rows='1' placeholder="Street or Postcode" class='location_search'></textarea>
+                <button class='report'>Report a crime</button>
+            </section>
 
 
-                $("#click").click(() => {
-                    getData(lat, lng, returnData);
-                });
-            </script>
-        </button>
+            <section id='themes' class='themes'>
+                <button id='theme_ancient' class='theme_ancient'>1</button>
+                <button id='theme_modern' class='theme_modern'>1</button>
+                <button id='theme_hollow' class='theme_hollow'>1</button>
+                <p>Themes</p>
+            </section>
+
+            <button id='statistics' class='statistics'>
+                Statistics
+            </button>
+            <!-- Map -->
+            <!-- getData() from /static/js/api_rel.js not working -->
+            <!-- <button id="click">
+                Click me
+                <script>
+                    let lat= 52.406645267612724;
+                    let lng= -1.501645719390064;     
+
+
+                    $("#click").click(() => {
+                        getData(lat, lng, returnData);
+                    });
+                </script>
+            </button> -->    
+        </main>
+        
+
+
     </body>
 </html>

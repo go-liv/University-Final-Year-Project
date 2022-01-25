@@ -6,6 +6,7 @@ import os
 from flask import Flask, jsonify, render_template
 
 app = Flask(__name__)
+app.config['FLASK_ENV']='development'
 
 # example page
 @app.route("/heartbeat")
@@ -20,3 +21,6 @@ def catch_all(path):
     
     return render_template("index.html", title=title#, data=data)
     )
+
+if __name__ == '__main__':
+    app.run(debug=True)

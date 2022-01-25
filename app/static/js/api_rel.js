@@ -1,4 +1,4 @@
-var data;
+let data;
 let returnData = (err, data) => {
     // Return data as points in the map
     if(err !== null) {

@@ -5,10 +5,17 @@ html {
 main {
     width: 100%;
     height: 100%;
+    /* display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas: "head"
+                         "nav"
+                         "main"
+                         "foot"; */
 }
 
 .map {
     position: absolute;
+    /* maxwidth: 80%; */
     width: 80%;
     height: 80%;
     text-align: center;

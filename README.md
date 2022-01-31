@@ -7,5 +7,5 @@ To run:
   
   . venv/bin/activate
   
-  python3 app/\__init__.py
+  python3 app/\_\_init__.py
 

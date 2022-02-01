@@ -5,7 +5,15 @@ To run:
   
   sudo python3 -m venv venv
   
-  . venv/bin/activate
+  source ./venv/bin/activate
+
+  pip install flask flask_cors
   
-  python3 app/__init__.py
+  python3 backend/app.py
+
+  export NODE_OPTIONS=--openssl-legacy-provider
+
+  cd client
+  
+  npm run serve (for development)
 

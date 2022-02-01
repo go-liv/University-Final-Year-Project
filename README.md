@@ -14,6 +14,5 @@ To run:
   export NODE_OPTIONS=--openssl-legacy-provider
 
   cd client
-  
-  npm run serve (for development)
 
+  npm run serve (for development)

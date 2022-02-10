@@ -1,7 +1,7 @@
 <template>
   <main>
     <section id='map' class="map">
-      Map
+      <Map />
       <textarea name='location_search' cols='1' rows='1'
       placeholder="Street or Postcode" class="location_search"></textarea>
       <button class="report">Report a crime</button>
@@ -23,35 +23,25 @@
     </button>
 
     <footer class="footer">
-        <p>About <p>
+        <p>About</p>
         <p><a href="https://www.flaticon.com/free-icons/filter" title="filter icons">Filter icons created by joalfa - Flaticon</a></p>
+        <p><a href="https://www.maptiler.com" title="Maptiller">Maps - Maptiller Cloud</a></p>
     </footer>
-      <!-- Map -->
-      <!-- getData() from /static/js/api_rel.js not working -->
-      <!-- <button id="click">
-        Click me
-        <script>
-          let lat= 52.406645267612724;
-          let lng= -1.501645719390064;
-
-          $("#click").click(() => {
-            getData(lat, lng, returnData);
-          });
-        </script>
-      </button> -->
   </main>
 </template>
 
 <script>
+import Map from './Map.vue';
+
 export default {
   name: 'Index',
-  props: {
-    msg: String,
+  components: {
+    Map,
   },
 };
 </script>
 
-<style>
+<style scoped>
 @font-face {
     font-family: ancient-buttons;
     src: url("../assets/fonts/nunito/Nunito-Black.ttf");
@@ -69,10 +59,6 @@ export default {
     --font-color: rgb(243, 211, 170);
     --buttons: ancient-buttons;
     --text: ancient-small;
-}
-
-html {
-    background-color: rgb(122, 93, 55);
 }
 
 section {

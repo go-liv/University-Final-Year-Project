@@ -1,17 +1,25 @@
 <template>
   <div id="app">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <Map />
+    <Index />
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/Index.vue';
+import Index from './components/Index.vue';
+import Map from './components/Map.vue';
 
 export default {
   name: 'App',
   components: {
-    HelloWorld,
+    Index,
+    Map,
   },
 };
 </script>
 
+<style>
+  html {
+      background-color: rgb(122, 93, 55);
+  }
+</style>

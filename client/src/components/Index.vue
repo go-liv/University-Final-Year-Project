@@ -2,13 +2,13 @@
   <main>
     <section id='map' class="map">
       <Map />
-      <textarea name='location_search' cols='1' rows='1'
-      placeholder="Street or Postcode" class="location_search"></textarea>
+
       <button class="report">Report a crime</button>
     </section>
 
     <button id='options' class="options" v-on:click='filter = 1'>
       <img src="../assets/filter.png" width='60px'/>
+      <p>Toma</p>
     </button>
 
     <section id='themes' class='themes'>
@@ -140,7 +140,7 @@ section {
     border: none;
     left: 93%;
     top: 5%;
-  cursor: pointer;
+    cursor: pointer;
     text-align: center;
 }
 
@@ -173,6 +173,7 @@ a {
     padding-right: -15px;
     max-height: 45px;
     overflow: hidden;
+    z-index: 999;
 }
 
 .footer > p:first-of-type {

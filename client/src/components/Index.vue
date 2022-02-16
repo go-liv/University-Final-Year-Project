@@ -2,7 +2,7 @@
   <main>
     <section id='map' class="map">
       <Map />
-
+      <Geocoder />
       <button class="report">Report a crime</button>
     </section>
 
@@ -32,11 +32,13 @@
 
 <script>
 import Map from './Map.vue';
+import Geocoder from './Geocoder.vue';
 
 export default {
   name: 'Index',
   components: {
     Map,
+    Geocoder,
   },
 };
 </script>
@@ -91,16 +93,6 @@ section {
     box-shadow: -25px 25px 30px rgb(27, 23, 19);
 }
 
-.location_search {
-    color: rgb(243, 211, 170);
-    position: absolute;
-    width: 20%;
-    height: 3%;
-    left: 78%;
-    top: 3%;
-    resize: none;
-}
-
 .report {
     color: rgb(243, 211, 170);
     font-family: ancient-buttons;
@@ -108,7 +100,7 @@ section {
     width: 10%;
     height: 5%;
     left: 88.5%;
-    top: 10%;
+    top: 15%;
     text-size-adjust: auto;
 }
 

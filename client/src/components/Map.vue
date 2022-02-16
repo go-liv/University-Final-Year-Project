@@ -18,12 +18,11 @@ import {
 export default {
   name: 'Map',
   setup() {
+    const apiKey = process.env.VUE_APP_MAPTILER_API_KEY;
     const mapContainer = shallowRef(null);
     const map = shallowRef(null);
 
     onMounted(() => {
-      const apiKey = 'e2X4JtWYnn0mEincF42e';
-
       const initialState = { lng: -3, lat: 54, zoom: 5 };
 
       map.value = markRaw(new Map({

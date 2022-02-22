@@ -2,7 +2,6 @@
   <main>
     <section id='map' class="map">
       <Map />
-      <Geocoder />
       <button class="report">Report a crime</button>
     </section>
 
@@ -26,19 +25,18 @@
         <p>About</p>
         <p><a href="https://www.flaticon.com/free-icons/filter" title="filter icons">Filter icons created by joalfa - Flaticon</a></p>
         <p><a href="https://www.maptiler.com" title="Maptiller">Maps - Maptiller Cloud</a></p>
+        <p><a href="https://maplibre.org/" title="Maplibre">Cursor geolocation - Maplibre</a></p>
     </footer>
   </main>
 </template>
 
 <script>
 import Map from './Map.vue';
-import Geocoder from './Geocoder.vue';
 
 export default {
   name: 'Index',
   components: {
     Map,
-    Geocoder,
   },
 };
 </script>

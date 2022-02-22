@@ -10,6 +10,7 @@
   "dependencies": {
     "@mapbox/mapbox-gl-geocoder": "^4.7.4",
     "@maptiler/geocoder": "^1.1.0",
+    "axios": "^0.26.0",
     "core-js": "^3.6.5",
     "mapbox-gl": "^2.7.0",
     "maplibre-gl": "^2.1.1",
@@ -41,7 +42,9 @@
     "parserOptions": {
       "parser": "babel-eslint"
     },
-    "rules": {}
+    "rules": {
+      "no-console": "off"
+    }
   },
   "browserslist": [
     "> 1%",

@@ -12,12 +12,10 @@ let returnData = (err, data) => {
 let getData = (lat, lng, callback) => {
     // getData for query
     let data = null;
-    $.ajax({
-        type: 'GET',
-        url: 'https://data.police.uk/api/crimes-street/all-crime?lat='+lat+'&lng='+lng+'',
-        success: (res) => {
+    axios
+        .get('https://data.police.uk/api/crimes-street/all-crime?lat='+lat+'&lng='+lng+'')
+        .then( (res) => {
             console.log("Sucess");
             callback(null, res);
-        }
-    });
+        });        
 };

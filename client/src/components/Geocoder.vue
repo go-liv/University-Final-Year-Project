@@ -1,56 +1,31 @@
-<template>
-<section>
-  <div id="location_search" class="location_search"></div>
-  <pre id="result"></pre>
-</section>
-</template>
-
 <script>
 // import { onMounted } from 'vue';
 // import { loadScript } from 'vue-plugin-load-script';
 // import '@maptiler/geocoder';
 // import mapboxgl from 'mapbox-gl';
-import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
+import axios from 'axios';
 
 export default {
-  name: 'Map',
+  name: 'Geocoder',
   data() {
     return {
       coor: null,
       addr: null,
-      apiKey: process.env.VUE_APP_MAPBOX_API_KEY,
+      lat: null,
+      lon: null,
     };
   },
-  mounted() {
-    const geocoder = new MapboxGeocoder({
-      accessToken: this.apiKey,
-      types: 'country,region,place,postcode,locality,neighborhood',
-    });
+  geocode(query) {
+    const apiKey = process.env.VUE_APP_MAPTILER_API_KEY;
 
-    geocoder.addTo('#location_search');
+    const url = `https://api.maptiler.com/geocoding/${query}.json?key=${apiKey}&bbox=-16.105957,49.624946,4.724121,59.411548`;
+    axios
+      .get(url)
+      .then((response) => { [this.lat, this.lon] = response.data.features[0].center; })
+      // queryRes = response.data.features[0].center;
+      .catch((error) => { console.log(error); });
 
-    // Get the geocoder results container.
-    const results = document.getElementById('location_search');
-
-    // Add geocoder result to container.
-    geocoder.on('result', (e) => {
-      results.innerText = JSON.stringify(e.result, null, 2);
-    });
+    return [this.lat, this.lon];
   },
 };
 </script>
-
-<style scoped>
-.location_search {
-    color: rgb(27, 23, 19);
-    position: absolute;
-    width: 35%;
-    height: 3%;
-    left: 68%;
-    top: 3%;
-    resize: none;
-}
-.results {
-    background-color: rgb(27, 23, 19);;
-}
-</style>

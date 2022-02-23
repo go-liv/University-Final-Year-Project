@@ -1,15 +1,17 @@
 <template>
+<section>
   <div id="map-wrap">
     <a href="https://www.maptiler.com" id="watermark"><img
         src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler logo"/></a>
     <div id="map" ref="mapContainer"></div>
     <pre id="info"></pre>
-    <div id="location_search">
-      <input type="text" id="search" placeholder="location search" />
-      <p id="results">{{lat}} == {{lon}}</p>
-    <button type="submit" v-on:click="mvToLoc" />
   </div>
+
+  <div id="location_search">
+    <input type="text" id="search" placeholder="location search" />
+    <button id="submit" type="submit" />
   </div>
+</section>
 </template>
 
 <script>
@@ -21,29 +23,17 @@ import {
   shallowRef, onMounted, onUnmounted, markRaw,
 } from 'vue';
 
-import Geocoder from './Geocoder.vue';
+import axios from 'axios';
 
 export default {
   name: 'Map',
-  data() {
-    return {
-      lat: null,
-      lon: null,
-    };
-  },
-  methods: {
-    mvToLoc() {
-      const query = document.getElementById('search').value;
-      [this.lat, this.lon] = Geocoder.geocode(query);
-    },
-  },
   setup() {
     const apiKey = process.env.VUE_APP_MAPTILER_API_KEY;
     const mapContainer = shallowRef(null);
     const map = shallowRef(null);
 
     onMounted(() => {
-      const initialState = { lng: -3, lat: 54, zoom: 7 };
+      const initialState = { lng: -1.515536654205448, lat: 52.41199188801869, zoom: 12 };
 
       map.value = markRaw(new Map({
         container: mapContainer.value,
@@ -52,8 +42,26 @@ export default {
         zoom: initialState.zoom,
       }).addControl(new NavigationControl(), 'top-left'));
 
-      map.value.on('mousemove', (e) => {
-        document.getElementById('info').innerHTML = `${JSON.stringify(e.point)}<br />${JSON.stringify(e.lngLat.wrap())}`;
+      map.value.on('mousemove', (cursor) => {
+        document.getElementById('info').innerHTML = `${JSON.stringify(cursor.point)}<br />${JSON.stringify(cursor.lngLat.wrap())}`;
+      });
+
+      document.getElementById('submit').addEventListener('click', () => {
+        console.log('submitting query to geocoder');
+        console.log('geocoder called');
+        const query = document.getElementById('search').value;
+        const url = `https://api.maptiler.com/geocoding/${query}.json?key=${apiKey}&bbox=-16.105957,49.624946,4.724121,59.411548`;
+        axios
+          .get(url)
+          .then((response) => {
+            console.log(`On geocoder() ${response.data.features[0].center}`);
+            map.value.flyTo({
+              center: response.data.features[0].center,
+              essential: true,
+            });
+          })
+          // queryRes = response.data.features[0].center;
+          .catch((error) => { console.log(error); });
       });
     });
 

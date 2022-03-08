@@ -7,7 +7,7 @@
 
     <button id='options' class="options" v-on:click='filter = 1'>
       <img src="../assets/filter.png" width='60px'/>
-      <p>Toma</p>
+      <p>Options</p>
     </button>
 
     <section id='themes' class='themes'>
@@ -62,7 +62,7 @@ export default {
 }
 
 section {
-    color: rgb(243, 211, 170);
+    color: rgb(27, 23, 19);
     width: 100%;
     height: 100%;
     /* display: grid;
@@ -75,7 +75,7 @@ section {
 
 .map {
     box-shadow: -20px 20px 20px rgb(27, 23, 19);
-    color: rgb(243, 211, 170);
+    color: rgb(27, 23, 19);
     font-family: ancient-small;
     position: absolute;
     /* maxwidth: 80%; */
@@ -92,7 +92,7 @@ section {
 }
 
 .report {
-    color: rgb(243, 211, 170);
+    color: rgb(27, 23, 19);
     font-family: ancient-buttons;
     position: absolute;
     width: 10%;
@@ -103,7 +103,7 @@ section {
 }
 
 .statistics {
-    color: rgb(243, 211, 170);
+    color: rgb(27, 23, 19);
     font-family: ancient-buttons;
     position: absolute;
     width: 10%;
@@ -114,7 +114,7 @@ section {
 }
 
 .themes {
-    color: rgb(243, 211, 170);
+    color: rgb(27, 23, 19);
     font-family: ancient-buttons;
     position: absolute;
     width: 10%;
@@ -153,7 +153,7 @@ a {
     display: inline-block;
     text-align: left;
     width: 12%;
-    color: rgb(122, 93, 55);
+    color: rgb(197, 197, 197);
     background-color: rgb(27, 23, 19);
     position: absolute;
     bottom: 0;

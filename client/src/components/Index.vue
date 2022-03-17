@@ -5,9 +5,8 @@
       <button class="report">Report a crime</button>
     </section>
 
-    <button id='options' class="options" v-on:click='filter = 1'>
+    <button id='options' class="options">
       <img src="../assets/filter.png" width='60px'/>
-      <p>Options</p>
     </button>
 
     <section id='themes' class='themes'>

@@ -18,7 +18,7 @@
   </div>
 
   <div id="police_data">
-    <button v-on:click="getPoliceCrimes">Police</button>
+    <button v-on:click="resetZoom">Reset Crimes</button>
   </div>
 
   <div id="error">
@@ -29,7 +29,7 @@
 
 <script>
 import {
-  Map, NavigationControl,
+  Map, NavigationControl, Marker,
 } from 'maplibre-gl';
 
 import axios from 'axios';
@@ -39,15 +39,31 @@ export default {
   data() {
     return {
       apiKey: process.env.VUE_APP_MAPTILER_API_KEY,
+      center: [-1.515536654205448, 52.41199188801869],
+      zoom: 7,
+      fly: null,
       map: null,
       places: [{}],
-      policeData: null,
-      center: [-1.515536654205448, 52.41199188801869],
-      zoom: 9,
+      crimeData: null,
       errorMsg: null,
+      addedMarkers: null,
     };
   },
   methods: {
+    resetZoom() {
+      this.map.flyTo({
+        center: this.map.center,
+        zoom: 7,
+        essential: true,
+      });
+      this.fly = 7;
+      console.log('removing markers');
+      this.addedMarkers.forEach((marker) => {
+        marker.remove();
+      });
+      this.addedMarkers = null;
+      this.crimeData = null;
+    },
     searchLoc() {
       const query = String(document.getElementById('search').value).replace(' ', '_');
       const url = `https://api.maptiler.com/geocoding/${query}.json?key=${this.apiKey}&bbox=-16.105957,49.624946,4.724121,59.411548`;
@@ -74,48 +90,70 @@ export default {
         .get(url)
         .then((response) => {
           this.center = response.data.features[0].center;
-          console.log(`Id on geocode ${id}`);
           if (id.includes('city')) {
-            this.zoom = 11;
+            this.fly = 10;
           }
           if (id.includes('street')) {
-            this.zoom = 18;
+            this.fly = 14;
           }
           if (id.includes('subcity')) {
-            this.zoom = 15;
+            this.fly = 12;
           }
           this.map.flyTo({
             center: this.center,
-            zoom: this.zoom,
+            zoom: this.fly,
             essential: true,
           });
           this.places = [{}];
-          this.policeData = null;
         })
         // queryRes = response.data.features[0].center;
         .catch((error) => { console.log(error); });
     },
     getPoliceCrimes() {
-      this.policeData = [];
-      const bounds = this.map.getBounds();
-      const sw = bounds.getSouthWest();
-      const se = bounds.getSouthEast();
-      const nw = bounds.getNorthWest();
-      const ne = bounds.getNorthEast();
-      const url = `https://data.police.uk/api/crimes-street/all-crime?poly=${sw.lat},${sw.lng}:${se.lat},${se.lng}:${nw.lat},${nw.lng}:${ne.lat},${ne.lng}`;
+      const sw = {
+        lat: String(this.center[1] - 0.03),
+        lon: String(this.center[0] - 0.15),
+      };
+      const se = {
+        lat: String(this.center[1] + 0.1),
+        lon: String(this.center[0] - 0.15),
+      };
+      const nw = {
+        lat: String(this.center[1] - 0.1),
+        lon: String(this.center[0] + 0.15),
+      };
+      const ne = {
+        lat: String(this.center[1] + 0.1),
+        lon: String(this.center[0] + 0.15),
+      };
+      const url = `https://data.police.uk/api/crimes-street/all-crime?poly=${sw.lat},${sw.lon}:${se.lat},${se.lon}:${nw.lat},${nw.lon}:${ne.lat},${ne.lon}`;
       axios
         .get(url)
         .then((response) => {
+          this.crimeData = [];
           response.data.forEach((crime) => {
-            this.policeData.push(crime);
+            const location = {
+              type: 'Feature',
+              properties: {
+                category: crime.category,
+                month: crime.month,
+                iconSize: 20,
+              },
+              geometry: {
+                type: 'Point',
+                coordinates: [Number(crime.location.longitude), Number(crime.location.latitude)],
+              },
+            };
+
+            this.crimeData.push(location);
           });
-          console.log(this.policeData);
+          this.$forceUpdate();
         })
         .catch((error) => {
           console.log(error);
-          if (error.response.status === 503) {
+          if (error.status === 503) {
             this.errorMsg = 'Too many crimes reported in the current screen, zoom in!';
-            this.policeData = null;
+            this.crimeData = null;
           }
         });
     },
@@ -132,17 +170,44 @@ export default {
       document.getElementById('mouse_coor').innerHTML = `${JSON.stringify(cursor.lngLat.wrap())}`;
     });
 
-    this.map.on('zoom', () => {
-      if (this.map.getZoom() >= 11 && this.policeData === null) {
+    this.map.on('zoomend', () => {
+      console.log(`zoom to go to: ${this.fly}`);
+      if (this.fly >= 10 && this.crimeData === null) {
         this.getPoliceCrimes();
       }
-      if (this.map.getZoom() < 8 && this.policeData !== null) {
-        this.policeData = null;
+      if (this.fly <= 7
+      && !(this.addedMarkers === null
+      || this.addedMarkers === undefined
+      || this.addedMarkers === [])) {
+        this.resetZoom();
       }
     });
   },
   updated() {
-    console.log('Setup updated.');
+    if (this.crimeData !== null && this.addedMarkers === null) {
+      console.log('adding markers');
+      // const el = document.createElement('div');
+      // el.className = 'marker';
+      // el.style.backgroundImage = 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-plane-512.png';
+      // el.style.width = `${this.crimeData[0].properties.iconSize}px`;
+      // el.style.height = `${this.crimeData[0].properties.iconSize}px`;
+
+      // el.addEventListener('click', () => {
+      //   console.log(`Marker: ${this.crimeData[0].properties.category}`);
+      // });
+
+      // add marker to map
+      this.addedMarkers = [];
+      this.crimeData.forEach((crime) => {
+        const lat = crime.geometry.coordinates[1];
+        const lon = crime.geometry.coordinates[0];
+        const marker = new Marker({ color: '#0000FF' })
+          .setLngLat([lon, lat])
+          .addTo(this.map);
+        this.addedMarkers.push(marker);
+      });
+      console.log(this.addedMarkers);
+    }
   },
   unmounted() {
     this.map.value.remove();

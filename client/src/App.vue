@@ -17,6 +17,6 @@ export default {
 
 <style>
   html {
-      background-color: rgb(197, 197, 197);
+    background-color: rgb(197, 197, 197);
   }
 </style>

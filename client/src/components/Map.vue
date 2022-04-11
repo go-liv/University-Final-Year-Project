@@ -4,7 +4,7 @@
       <a href='https://www.maptiler.com' id='watermark'><img
           src='https://api.maptiler.com/resources/logo.svg' alt='MapTiler logo'/></a>
       <div id='map'></div>
-      <pre id='mouse_coor'></pre>
+      <pre id='info'></pre>
     </div>
 
     <div id='location_search'>
@@ -17,14 +17,20 @@
       </ul>
     </div>
 
-    <div id='report'>
-      <button @click='reportForm = true'>Report a crime</button>
-      <form v-if='reportForm == true'>
-        <label for='crimeCategory'>Insert the crime category.</label>
-        <input id='crimeCategory' v-model='crimeCategory' type='select' />
-        <input id='lat' v-model='lat' type='number' step='0.00000001'/>
+    <div id='report' v-if='isReport === false'>
+      <button v-on:click='isReport = true'>Report a crime</button>
+    </div>
 
-        <button type='submit' @click='reportForm = false'>Submit crime!</button>
+    <div id='reportForm' v-if='isReport === true'>
+      <form @submit.prevent='reportCrime'>
+        <label for='lon'>Longitude</label><br/>
+        <input type='number' step='any' id='lon' name='lon' v-model='this.coordinates.lng'>
+        <label for='lat'>Latitude</label><br/>
+        <input type='number' step='any' id='lat' name='lat' v-model='this.coordinates.lat'>
+        <label for='month'>Month</label><br/>
+        <month-picker-input id='month' @change='changeMonth'></month-picker-input>
+        <button type='button' v-on:click='isReport = false'>Close form</button>
+        <button type='submit'>Submit</button>
       </form>
     </div>
 
@@ -47,14 +53,25 @@ import {
 
 import axios from 'axios';
 
+import { MonthPickerInput } from 'vue-month-picker';
+
 export default {
   name: 'Map',
+  components: {
+    MonthPickerInput,
+  },
   data() {
     return {
       // for report form
-      reportForm: false,
+      isReport: false,
       crimeCategory: null,
       coordinates: [],
+      date: {
+        from: null,
+        to: null,
+        month: null,
+        year: null,
+      },
 
       // for map and crime markers
       apiKey: process.env.VUE_APP_MAPTILER_API_KEY,
@@ -69,6 +86,14 @@ export default {
     };
   },
   methods: {
+    changeMonth(date) {
+      this.date = date;
+    },
+    reportCrime() {
+      console.log('Crime data:');
+      console.log(`coordinates: ${this.coordinates}`);
+      console.log(`date: ${JSON.stringify(this.date)}`);
+    },
     resetZoom() {
       this.fly = 7;
       this.map.flyTo({
@@ -76,44 +101,51 @@ export default {
         zoom: this.fly,
         essential: true,
       });
+      this.resetMarkers();
+    },
+    resetMarkers() {
       console.log('removing markers');
-      this.addedPopups.forEach((marker) => {
-        marker.remove();
-      });
+      if (this.addedPopups !== null) {
+        this.addedPopups.forEach((marker) => {
+          marker.remove();
+        });
+      }
       this.addedPopups = null;
       this.crimeData = null;
       this.errorMsg = null;
     },
     searchHere() {
+      this.resetMarkers();
       if (this.map.getZoom() < 11) {
         this.errorMsg = 'The search is too high, lower your zoom to get the results.';
         return;
       }
+      const centerMv = this.map.getCenter();
+      this.center = [centerMv.lng, centerMv.lat];
       this.fly = this.map.getZoom();
       this.getPoliceCrimes();
     },
     searchLoc() {
       const query = String(document.getElementById('search').value).replace(' ', '_');
-      const url = `https://api.maptiler.com/geocoding/${query}.json?key=${this.apiKey}&bbox=-16.105957,49.624946,4.724121,59.411548`;
+      const url = `https://api.maptiler.com/geocoding/${query}.json?key=${this.apiKey}&bbox=-16.105957,49.624946,4.724121,64.411548`;
       axios
         .get(url)
         .then((response) => {
           const res = [];
-
           for (const each in response.data.features) { // eslint-disable-line
             res.push({
               name: response.data.features[each].place_name,
               id: response.data.features[each].id,
             });
           }
-
           this.places = res;
         })
         // queryRes = response.data.features[0].center;
-        .catch((error) => { console.log(error); });
+        .catch((error) => { console.error(error); });
     },
     geocode(id) {
       const url = `https://api.maptiler.com/geocoding/${id}.json?key=${this.apiKey}`;
+      this.resetMarkers();
       axios
         .get(url)
         .then((response) => {
@@ -139,7 +171,7 @@ export default {
           this.getPoliceCrimes();
         })
         // queryRes = response.data.features[0].center;
-        .catch((error) => { console.log(error); });
+        .catch((error) => { console.error(error); });
     },
     getPoliceCrimes() {
       let sw = null;
@@ -200,7 +232,8 @@ export default {
           lon: String(this.center[0] + 0.0165),
         };
       }
-
+      console.log('On Police crimes');
+      console.log(`BBOX: ${sw.lat}-${sw.lon} ${se.lat}-${se.lon} ${nw.lat}-${nw.lon} ${ne.lat}-${ne.lon}`);
       const url = `https://data.police.uk/api/crimes-street/all-crime?poly=${sw.lat},${sw.lon}:${se.lat},${se.lon}:${nw.lat},${nw.lon}:${ne.lat},${ne.lon}`;
       axios
         .get(url)
@@ -224,7 +257,7 @@ export default {
           this.getDBCrimes();
         })
         .catch((error) => {
-          console.log(error);
+          console.error(error);
           if (error.status === 503) {
             this.errorMsg = 'Too many crimes reported in the current screen, zoom in!';
             this.crimeData = null;
@@ -237,8 +270,16 @@ export default {
     },
     getDBCrimes() {
       const url = 'http://127.0.0.1:5000/report';
+      console.log('On DB crimes');
+      console.log(`ZOOM: ${this.map.getZoom()}`);
       axios
-        .get(url)
+        .get(url, {
+          params: {
+            lat: this.center[1],
+            lon: this.center[0],
+            zoom: this.map.getZoom(),
+          },
+        })
         .then((response) => {
           response.data.body.forEach((crime) => {
             this.crimeData.push(crime);
@@ -254,7 +295,6 @@ export default {
     },
   },
   mounted() {
-    console.log(`Geolocation: ${navigator.geolocation}`);
     const geolocate = new GeolocateControl({
       positionOptions: {
         enableHighAccuracy: true,
@@ -271,43 +311,41 @@ export default {
 
     console.log(`This center: ${this.center}`);
 
+    this.map.on('mousemove', (e) => {
+      document.getElementById('info').innerHTML = `${JSON.stringify(e.point)} <br /> ${JSON.stringify(e.lngLat.wrap())}`;
+    });
+
     this.map.scrollZoom.enable();
 
     geolocate.on('geolocate', () => {
       this.fly = 16;
     });
 
-    this.map.on('mousemove', (cursor) => {
-      document.getElementById('mouse_coor').innerHTML = `${JSON.stringify(cursor.lngLat.wrap())}`;
-    });
-
     this.map.on('zoomend', () => {
       this.fly = this.map.getZoom();
       if (this.fly >= 15 && this.crimeData === null) {
         console.log(`on zoomend, zoom to go to: ${this.fly}`);
+        const centerMv = this.map.getCenter();
+        this.center = [centerMv.lng, centerMv.lat];
         this.getPoliceCrimes();
       }
       if (this.map.getZoom() <= 7
       && !(this.addedPopups === null
       || this.addedPopups === undefined
       || this.addedPopups === [])) {
-        this.resetZoom();
+        this.resetMarkers();
       }
     });
   },
   updated() {
+    console.log(`This center ${this.center}`);
+    if (this.isReport === true) {
+      this.map.on('click', (e) => {
+        this.coordinates = e.lngLat.wrap();
+      });
+    }
     if (this.crimeData !== null && this.addedPopups === null) {
       console.log('adding markers');
-      // const el = document.createElement('div');
-      // el.className = 'marker';
-      // el.style.backgroundImage = 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-plane-512.png';
-      // el.style.width = `${this.crimeData[0].properties.iconSize}px`;
-      // el.style.height = `${this.crimeData[0].properties.iconSize}px`;
-
-      // el.addEventListener('click', () => {
-      //   console.log(`Marker: ${this.crimeData[0].properties.category}`);
-      // });
-
       // add popup markers to map
       this.addedPopups = [];
       const locations = [];
@@ -337,11 +375,11 @@ export default {
           }
           console.log(this.addedPopups);
         } catch (error) {
-          console.log(this.errorMsg);
+          console.error(this.errorMsg);
         }
       });
       locations.forEach((popup) => {
-        const add = new Marker({ color: '#0000FF' })
+        const add = new Marker({ color: '#0000FF', offset: [0, 0] })
           .setLngLat([popup.coordinates[0], popup.coordinates[1]])
           .setPopup(new Popup().setHTML(`<div id='popup'><h2>Category:  </h2><p>${popup.categories}</p>
             </br><h2>Type of data:  </h2><p>${popup.type}</p>
@@ -369,26 +407,44 @@ export default {
     src: url('../assets/fonts/nunito/Nunito-Light.ttf');
 }
 
+* {
+  box-sizing: border-box;
+}
+
 /* This won't function as conventional css so see it as a label so I can copy the colors easily */
 .theme {
-    --primary: rgb(65, 37, 0);
-    --secondary: rgb(122, 93, 55);
-    --accent: rgb(27, 23, 19);
-    --font-color: rgb(243, 211, 170);
-    --buttons: buttons;
-    --text: small;
+  --primary: rgb(65, 37, 0);
+  --secondary: rgb(122, 93, 55);
+  --accent: rgb(27, 23, 19);
+  --font-color: rgb(243, 211, 170);
+  --buttons: buttons;
+  --text: small;
 }
 
 #report {
+  color: rgb(27, 23, 19);
+  font-family: buttons;
+  position: absolute;
+  width: 10%;
+  height: 5%;
+  left: 88.5%;
+  top: 15%;
+  text-size-adjust: auto;
+  z-index: 200;
+}
+
+#reportForm {
     color: rgb(27, 23, 19);
-    font-family: buttons;
     position: absolute;
-    width: 10%;
-    height: 5%;
-    left: 88.5%;
-    top: 15%;
+    width: 11%;
+    height: 40%;
+    left: 45.5%;
+    top: 3%;
+    -webkit-text-size-adjust: auto;
+    -moz-text-size-adjust: auto;
     text-size-adjust: auto;
-    z-index: 998;
+    z-index: 201;
+    background: wheat;
 }
 
 #map_wrap {
@@ -407,7 +463,7 @@ export default {
   position: absolute;
   left: 10px;
   bottom: 10px;
-  z-index: 996;
+  z-index: 202;
 }
 
 #mouse_coor {
@@ -420,7 +476,7 @@ export default {
   text-align: center;
   color: #222;
   background: #fff;
-  z-index: 997;
+  z-index: 203;
 }
 
 #location_search {
@@ -431,36 +487,23 @@ export default {
   left: 76%;
   top: 3%;
   resize: none;
-  z-index: 998;
+  z-index: 204;
 }
 
 #location_search > ul {
   list-style-type: none;
-  background-color: rgba(255, 255, 255, 0.35);
-}
-
-#results {
-  color: rgb(27, 23, 19);
-  background-color: rgb(197, 197, 197);
+  left: 10%;
+  background-color: rgb(255, 255, 255);
   position: absolute;
-  width: 35%;
-  height: auto;
-  left: 60%;
-  top: 10%;
-  resize: none;
-  z-index: 999;
+  padding-left: 0;
+  z-index: 205;
 }
 
 #police_data {
   position: absolute;
   left: 7%;
   top: 4%;
-  z-index: 1000;
-}
-
-#popup {
-  position: absolute;
-  z-index: 1001;
+  z-index: 206;
 }
 
 #error {
@@ -470,10 +513,42 @@ export default {
   left: 0%;
   top: 82%;
   font-size: 18px;
-  z-index: 1002;
+  z-index: 207;
 }
 
-@media only screen and (max-width: 800px) {
+@media only screen and (max-width: 1000px) {
+  * {
+    box-sizing: border-box;
+  }
+
+  #report {
+    color: rgb(27, 23, 19);
+    font-family: buttons;
+    position: absolute;
+    width: 10%;
+    height: 5%;
+    left: 88.5%;
+    top: 15%;
+    text-size-adjust: auto;
+    z-index: 200;
+  }
+
+  #reportForm {
+    color: rgb(27, 23, 19);
+    position: absolute;
+    width: 10%;
+    height: 5%;
+    left: 88.5%;
+    top: 20%;
+    text-size-adjust: auto;
+    z-index: 201;
+  }
+
+  #month {
+    right: 50%;
+    top: 0;
+  }
+
   #map_wrap {
     position: relative;
     width: 100%;
@@ -490,7 +565,7 @@ export default {
     position: absolute;
     left: 75%;
     bottom: -18%;
-    z-index: 996;
+    z-index: 202;
   }
 
   #mouse_coor {
@@ -505,7 +580,7 @@ export default {
     left: 15%;
     top: 2%;
     resize: none;
-    z-index: 998;
+    z-index: 203;
   }
 
   #location_search > input {
@@ -515,8 +590,8 @@ export default {
 
   #location_search > ul {
     list-style-type: none;
-    background-color: rgb(255, 255, 255, 0.85);
-    z-index: 999;
+    background-color: rgb(255, 255, 255);
+    z-index: 204;
     position: absolute;
     text-align: left;
     left: 0;
@@ -527,31 +602,19 @@ export default {
     padding: 1%;
   }
 
-  #results {
-    color: rgb(27, 23, 19);
-    background-color: rgb(197, 197, 197);
-    position: absolute;
-    width: 35%;
-    height: auto;
-    left: 60%;
-    top: 10%;
-    resize: none;
-    z-index: 999;
-  }
-
   #police_data {
     color: rgb(27, 23, 19);
     position: absolute;
     left: 15%;
     top: 10%;
     font-family: buttons;
-    z-index: 997;
+    z-index: 205;
     width: 50%;
   }
 
   #popup {
     position: absolute;
-    z-index: 1001;
+    z-index: 206;
   }
 
   #error {
@@ -561,7 +624,7 @@ export default {
     left: 0%;
     top: 82%;
     font-size: 18px;
-    z-index: 1002;
+    z-index: 207;
   }
 }
 </style>

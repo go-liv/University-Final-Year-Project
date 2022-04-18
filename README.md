@@ -3,16 +3,16 @@
 
 To run:
   
-  sudo python3 -m venv venv
+    sudo python3 -m venv venv
   
-  source ./venv/bin/activate
+    source ./venv/bin/activate
 
-  pip install flask flask_cors
+    pip install flask flask_cors
   
-  python3 backend/app.py
+    python3 backend/app.py
 
-  export NODE_OPTIONS=--openssl-legacy-provider
+    export NODE_OPTIONS=--openssl-legacy-provider
 
-  cd client
+    cd ../client
 
-  npm run serve (for development)
+    npm run serve (for development)

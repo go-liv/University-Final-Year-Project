@@ -2,6 +2,8 @@
 #### Can improving the current police.uk crime mapping software with user input improve the overall crime reporting/lookup?
 
 To run:
+    
+    cd ./api
   
     sudo python3 -m venv venv
   

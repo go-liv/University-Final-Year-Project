@@ -1,17 +1,15 @@
 <template>
   <section>
-    <div id='map_wrap'>
-      <a href='https://www.maptiler.com' id='watermark'><img
+    <a href='https://www.maptiler.com' id='watermark'><img
           src='https://api.maptiler.com/resources/logo.svg' alt='MapTiler logo'/></a>
-      <div id='map'></div>
-      <pre id='info'></pre>
-    </div>
+    <div id='map'></div>
+    <pre id='info'></pre>
 
     <div id='location_search'>
-      <input v-on:keyup.enter='searchLoc' id='search' type='text'
+      <input v-on:keydown.enter='searchLoc(false)' id='search' type='text'
         placeholder='City, street or keywords'>
       <ul>
-        <li v-for='place in places' :key='place.id' v-on:click='geocode(place.id)'>
+        <li v-for='place in places' :key='place.name' v-on:click='geocode(place.name, true)'>
           <a>{{ place.name }}</a>
         </li>
       </ul>
@@ -23,19 +21,40 @@
 
     <div id='reportForm' v-if='isReport === true'>
       <form @submit.prevent='reportCrime'>
-        <label for='lon'>Longitude</label><br/>
-        <input type='number' step='any' id='lon' name='lon' v-model='this.coordinates.lng'>
-        <label for='lat'>Latitude</label><br/>
-        <input type='number' step='any' id='lat' name='lat' v-model='this.coordinates.lat'>
+        <input v-on:keydown.enter.prevent='searchLoc(true)' id='searchInReport' type='text'
+        placeholder='City, street or keywords'>
+        <ul v-if='placesReport'>
+          <li v-for='place in placesReport' :key='place.name'
+          v-on:click='geocode(place.name, false)'>
+            <a>{{ place.name }}</a>
+          </li>
+        </ul>
         <label for='month'>Month</label><br/>
-        <month-picker-input id='month' @change='changeMonth'></month-picker-input>
-        <button type='button' v-on:click='isReport = false'>Close form</button>
-        <button type='submit'>Submit</button>
+        <month-picker-input id='month' @change='changeReportMonth'></month-picker-input>
+        <label for='category'>Category</label><br/>
+        <select name='category' id='category' v-model='this.crimeCategory'>
+          <option value='anti-social-behaviour'>Anti-social behaviour</option>
+          <option value='bicycle-theft'>Bicycle theft</option>
+          <option value='burglary'>Burglary</option>
+          <option value='criminal-damage-arson'>Criminal damage and arson</option>
+          <option value='drugs'>Drugs</option>
+          <option value='other-theft'>Other theft</option>
+          <option value='possession-of-weapons'>Possession of weapons</option>
+          <option value='public-order'>Public order</option>
+          <option value='robbery'>Robbery</option>
+          <option value='shoplifting'>Shoplifting</option>
+          <option value='theft-from-the-person'>Theft from the person</option>
+          <option value='vehicle-crime'>Vehicle Crime</option>
+          <option value='violent-crime'>Violence and sexual offenses</option>
+          <option value='other-crime'>Other crime</option>
+        </select>
+        <button type='button' v-on:click='isReport = false'> Close form </button>
+        <button type='submit'> Submit </button>
       </form>
     </div>
 
     <div id='police_data'>
-      <button type='button' v-on:click='resetZoom'>Reset Crimes</button>
+      <button type='button' v-on:click='resetMarkers'>Reset Crimes</button>
       <br />
       <button type='button' v-on:click='searchHere'>Search Here</button>
     </div>
@@ -52,7 +71,6 @@ import {
 } from 'maplibre-gl';
 
 import axios from 'axios';
-
 import { MonthPickerInput } from 'vue-month-picker';
 
 export default {
@@ -65,17 +83,20 @@ export default {
       // for report form
       isReport: false,
       crimeCategory: null,
-      coordinates: [],
+      coordinates: null,
       date: {
         from: null,
         to: null,
         month: null,
         year: null,
       },
+      placesReport: [{}],
 
       // for map and crime markers
       apiKey: process.env.VUE_APP_MAPTILER_API_KEY,
-      center: [-1.515536654205448, 54.27513856219127],
+      travelTime: process.env.VUE_APP_TRAVEL_TIME_API_KEY,
+      appId: process.env.VUE_APP_TRAVEL_TIME_APP_ID,
+      center: [-0.118092, 51.50986],
       zoom: 7,
       fly: null,
       map: null,
@@ -86,13 +107,31 @@ export default {
     };
   },
   methods: {
-    changeMonth(date) {
+    changeReportMonth(date) {
       this.date = date;
     },
     reportCrime() {
       console.log('Crime data:');
       console.log(`coordinates: ${this.coordinates}`);
+      console.log(`category: ${this.crimeCategory}`);
       console.log(`date: ${JSON.stringify(this.date)}`);
+      const url = 'http://127.0.0.1:5000/report';
+      axios
+        .post(url, {
+          coordinates: this.coordinates,
+          date: this.date,
+          category: this.crimeCategory,
+        })
+        .then((response) => {
+          console.log(`RESPONSE: ${JSON.stringify(response.data.body)}`);
+          this.$forceUpdate();
+        })
+        .catch((error) => {
+          if (error.status === 500) {
+            this.errorMsg = 'Try again, the API had some trouble reaching our server!';
+            this.crimeData = null;
+          }
+        });
     },
     resetZoom() {
       this.fly = 7;
@@ -113,6 +152,8 @@ export default {
       this.addedPopups = null;
       this.crimeData = null;
       this.errorMsg = null;
+      this.places = null;
+      this.placesReport = null;
     },
     searchHere() {
       this.resetMarkers();
@@ -125,50 +166,61 @@ export default {
       this.fly = this.map.getZoom();
       this.getPoliceCrimes();
     },
-    searchLoc() {
-      const query = String(document.getElementById('search').value).replace(' ', '_');
-      const url = `https://api.maptiler.com/geocoding/${query}.json?key=${this.apiKey}&bbox=-16.105957,49.624946,4.724121,64.411548`;
+    searchLoc(report) {
+      let query = null;
+      if (report) {
+        query = String(document.getElementById('searchInReport').value).replace(' ', '_');
+      } else {
+        query = String(document.getElementById('search').value).replace(' ', '_');
+      }
+      const url = `https://api.traveltimeapp.com/v4/geocoding/search?query="${query}"&within.country=gb`;
       axios
-        .get(url)
+        .get(url, {
+          headers: {
+            'X-Api-Key': this.travelTime,
+            'X-Application-Id': this.appId,
+            'Accept-Language': 'en',
+          },
+        })
         .then((response) => {
           const res = [];
           for (const each in response.data.features) { // eslint-disable-line
             res.push({
-              name: response.data.features[each].place_name,
-              id: response.data.features[each].id,
+              name: response.data.features[each].properties.name,
             });
           }
-          this.places = res;
+          if (report) {
+            this.placesReport = res;
+          } else {
+            this.places = res;
+          }
+          console.log(`places: ${res}`);
         })
-        // queryRes = response.data.features[0].center;
         .catch((error) => { console.error(error); });
     },
-    geocode(id) {
-      const url = `https://api.maptiler.com/geocoding/${id}.json?key=${this.apiKey}`;
+    geocode(name, fly) {
+      const url = `https://api.traveltimeapp.com/v4/geocoding/search?query="${name}"`;
       this.resetMarkers();
       axios
-        .get(url)
+        .get(url, {
+          headers: {
+            'X-Api-Key': this.travelTime,
+            'X-Application-Id': this.appId,
+            'Accept-Language': 'en',
+          },
+        })
         .then((response) => {
-          this.center = response.data.features[0].center;
-          if (id.includes('county')) {
-            this.fly = 10;
-          }
-          if (id.includes('city')) {
-            this.fly = 12;
-          }
-          if (id.includes('street')) {
+          this.coordinates = response.data.features[0].geometry.coordinates;
+          if (fly) {
             this.fly = 16;
+            this.map.flyTo({
+              center: this.coordinates,
+              zoom: this.fly,
+              essential: true,
+            });
+            this.places = [{}];
+            this.getPoliceCrimes();
           }
-          if (id.includes('subcity')) {
-            this.fly = 14;
-          }
-          this.map.flyTo({
-            center: this.center,
-            zoom: this.fly,
-            essential: true,
-          });
-          this.places = [{}];
-          this.getPoliceCrimes();
         })
         // queryRes = response.data.features[0].center;
         .catch((error) => { console.error(error); });
@@ -178,7 +230,7 @@ export default {
       let se = null;
       let nw = null;
       let ne = null;
-      if (this.fly <= 12 || this.fly >= 11) {
+      if (this.fly <= 12 && this.fly >= 11) {
         sw = {
           lat: String(this.center[1] - 0.02765),
           lon: String(this.center[0] - 0.13175),
@@ -196,7 +248,7 @@ export default {
           lon: String(this.center[0] + 0.13175),
         };
       }
-      if (this.fly <= 14 || this.fly >= 13) {
+      if (this.fly <= 14 && this.fly >= 13) {
         sw = {
           lat: String(this.center[1] - 0.00705),
           lon: String(this.center[0] - 0.03285),
@@ -214,7 +266,7 @@ export default {
           lon: String(this.center[0] + 0.03285),
         };
       }
-      if (this.fly <= 16 || this.fly >= 15) {
+      if (this.fly <= 16 && this.fly >= 15) {
         sw = {
           lat: String(this.center[1] - 0.0035),
           lon: String(this.center[0] - 0.0165),
@@ -233,6 +285,7 @@ export default {
         };
       }
       console.log('On Police crimes');
+      console.log(`This.Fly = ${this.fly}`);
       console.log(`BBOX: ${sw.lat}-${sw.lon} ${se.lat}-${se.lon} ${nw.lat}-${nw.lon} ${ne.lat}-${ne.lon}`);
       const url = `https://data.police.uk/api/crimes-street/all-crime?poly=${sw.lat},${sw.lon}:${se.lat},${se.lon}:${nw.lat},${nw.lon}:${ne.lat},${ne.lon}`;
       axios
@@ -295,21 +348,24 @@ export default {
     },
   },
   mounted() {
+    axios.defaults.headers.common['Content-Type'] = 'application/json';
     const geolocate = new GeolocateControl({
       positionOptions: {
         enableHighAccuracy: true,
       },
       trackUserLocation: true,
     });
+
     this.map = new Map({
       container: 'map',
-      style: `https://api.maptiler.com/maps/streets/style.json?key=${this.apiKey}`,
-      center: this.center,
+      style: `https://api.maptiler.com/maps/voyager/style.json?key=${this.apiKey}`,
+      center: [this.center[0], this.center[1]],
       zoom: this.zoom,
+      maxBounds: [[-7.57216793459, 49.959999905], [1.68153079591, 58.6350001085]],
     }).addControl(new NavigationControl(), 'top-left')
       .addControl(geolocate, 'top-left');
 
-    console.log(`This center: ${this.center}`);
+    console.log(`This center on mounted: ${this.map.getCenter()}`);
 
     this.map.on('mousemove', (e) => {
       document.getElementById('info').innerHTML = `${JSON.stringify(e.point)} <br /> ${JSON.stringify(e.lngLat.wrap())}`;
@@ -339,11 +395,6 @@ export default {
   },
   updated() {
     console.log(`This center ${this.center}`);
-    if (this.isReport === true) {
-      this.map.on('click', (e) => {
-        this.coordinates = e.lngLat.wrap();
-      });
-    }
     if (this.crimeData !== null && this.addedPopups === null) {
       console.log('adding markers');
       // add popup markers to map
@@ -354,7 +405,7 @@ export default {
         try {
           let exists = 0;
           const [lon, lat] = crime.geometry.coordinates;
-          if (this.crimeData.length > 300) {
+          if (this.crimeData.length > 400) {
             this.errorMsg = 'Too many crimes reported in the current screen, reset crimes and search for a more detailed location!';
             throw new Error();
           }
@@ -390,13 +441,14 @@ export default {
     }
   },
   unmounted() {
-    this.map.value.remove();
+    this.map.remove();
   },
 };
 </script>
 
 <style scoped>
 @import '~maplibre-gl/dist/maplibre-gl.css';
+@import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
 @font-face {
     font-family: buttons;
@@ -447,16 +499,11 @@ export default {
     background: wheat;
 }
 
-#map_wrap {
+#map {
   position: relative;
   width: 100%;
-  height: 100%; /* calculate height of the screen minus the heading */
-}
-
-#map {
-  position: absolute;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  bottom: 0;
 }
 
 #watermark {
@@ -496,7 +543,25 @@ export default {
   background-color: rgb(255, 255, 255);
   position: absolute;
   padding-left: 0;
+  width: 600px;
   z-index: 205;
+}
+
+#location_search > ul > li {
+  padding: 1%;
+}
+
+#reportForm > form > ul {
+  list-style-type: none;
+  left: 10%;
+  background-color: rgb(255, 255, 255);
+  position: absolute;
+  padding-left: 0;
+  z-index: 205;
+}
+
+#reportForm > form > ul > li {
+  padding: 1%;
 }
 
 #police_data {
@@ -549,16 +614,12 @@ export default {
     top: 0;
   }
 
-  #map_wrap {
-    position: relative;
-    width: 100%;
-    height: 80%; /* calculate height of the screen minus the heading */
-  }
-
   #map {
     position: absolute;
     width: 100%;
-    height: 80%;
+    height: 100%;
+    top: 0;
+    left: 0;
   }
 
   #watermark {
@@ -599,6 +660,19 @@ export default {
   }
 
   #location_search > ul > li {
+    padding: 1%;
+  }
+
+  #searchInReport {
+    list-style-type: none;
+    left: 10%;
+    background-color: rgb(255, 255, 255);
+    position: absolute;
+    padding-left: 0;
+    z-index: 205;
+  }
+
+  #searchInReport > li {
     padding: 1%;
   }
 
